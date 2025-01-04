@@ -1,0 +1,134 @@
+x-common-environment: &common-environment
+  CLUSTER_NAME: zrv
+  CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    restart: always
+    ports:
+      - 9870:9870
+      - 9000:9000
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+    environment: *common-environment
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    restart: always
+    ports:
+      - 9864:9864
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    environment: *common-environment
+    depends_on:
+      - namenode
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    restart: always
+    ports:
+      - 8032:8032
+    environment: *common-environment
+    depends_on:
+      - namenode
+      - datanode
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    restart: always
+    ports:
+      - 8042:8042
+    environment: *common-environment
+    depends_on:
+      - namenode
+      - datanode
+      - resourcemanager
+
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: historyserver
+    restart: always
+    ports:
+      - 8188:8188
+    volumes:
+      - hadoop_historyserver:/hadoop/yarn/timeline
+    environment: *common-environment
+    depends_on:
+      - namenode
+      - datanode
+      - resourcemanager
+
+  spark-master:
+    image: bitnami/spark:3.5
+    container_name: spark-master
+    restart: always
+    ports:
+      - 8080:8080
+      - 7077:7077
+    environment:
+      SPARK_MODE: master
+      INIT_DAEMON_STEP: setup_spark
+      SPARK_LOCAL_IP: spark-master
+      SPARK_MASTER_HOST: spark-master
+      SPARK_MASTER_URL: spark://spark-master:7077
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+    depends_on:
+      - namenode
+      - datanode
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: spark-worker
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      SPARK_MODE: worker
+      SPARK_WORKER_MEMORY: 2g
+      SPARK_WORKER_CORES: 2
+      SPARK_MASTER_URL: spark://spark-master:7077
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      SPARK_HBASE_HOST: hbase-zookeeper
+    depends_on:
+      - spark-master
+
+  mongodb:
+    image: bitnami/mongodb:8.0.4
+    container_name: mongodb
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo_d:/bitnami/mongodb
+    environment:
+      MONGODB_ROOT_PASSWORD: root
+      MONGODB_USERNAME: root
+      MONGODB_PASSWORD: root
+    depends_on:
+      - spark-master
+
+  mongo-express:
+    image: mongo-express:1.0.2-18
+    container_name: mongo-express
+    ports:
+      - 8088:8081
+    environment:
+      ME_CONFIG_BASICAUTH_USERNAME: root
+      ME_CONFIG_BASICAUTH_PASSWORD: root
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: root
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_SERVER: mongodb
+    depends_on:
+      - mongodb
+
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
+  hadoop_historyserver:
+  spark_logs:
+  mongo_d:

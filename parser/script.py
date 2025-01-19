@@ -31,7 +31,7 @@ mongo_conf = mongo_uri + "/" + database + "." + collection + auth
 
 # create spark session
 spark = SparkSession.builder \
-    .appName("optasia") \
+    .appName("subs") \
     .master("spark://spark-master:7077") \
     .config("spark.mongodb.input.uri", mongo_conf) \
     .config("spark.mongodb.output.uri", mongo_conf) \

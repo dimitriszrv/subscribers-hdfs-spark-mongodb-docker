@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 
 # create spark session
 spark = SparkSession.builder \
-    .appName("optasia") \
+    .appName("subs") \
     .master("spark://spark-master:7077") \
     .getOrCreate()
 
